@@ -1,0 +1,8 @@
+name = "Enderbutts"
+main = "Fivo\\Enderbutts\\Main"
+src-namespace-prefix = "Fivo\\Enderbutts"
+version = "0.0.1"
+api = ["6.0.0"]
+load = "POSTWORLD"
+author = "Quark Team"
+description = "Demo Plugin for Enderbutt impl"
