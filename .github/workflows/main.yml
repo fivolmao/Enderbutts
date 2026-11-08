@@ -1,0 +1,58 @@
+# Copy into the plugin repository. Hub replaces {{package_name}} on installation.
+name: BedrockNexus Publish
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Check out plugin source
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+
+      - name: Set up PHP for Quark V6
+        uses: Bedrock-Phanatics/setup-php-action@fded70a36fb7f9ee7c1150276cf55ed37367811c # 1.0.0
+        with:
+          php-version: '8.4'
+          install-path: ../bin
+          pm-version-major: '5'
+
+      - name: Check PHP syntax
+        run: find src -name '*.php' -print0 | xargs -0 -r -n1 php -l
+
+      - name: Build with DevTools
+        id: build
+        uses: AxolotlBucketLabs/DevTools@04fd726101109739bf1fd629dbe8499d3e2864bb # v3.0.0
+        with:
+          project: .
+          virions: .devtools-virions
+          output: build
+          prepare-dependencies: ${{ hashFiles('composer.lock') != '' }}
+
+      - name: Stage the plugin file
+        env:
+          SOURCE_PHAR: ${{ steps.build.outputs.phar }}
+          OUTPUT_PHAR: 'dist/{{package_name}}.phar'
+        run: |
+          mkdir -p dist
+          cp -- "$SOURCE_PHAR" "$OUTPUT_PHAR"
+
+      - name: Upload plugin for build selection
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: plugin-package
+          path: 'dist/{{package_name}}.phar'
+          if-no-files-found: error
