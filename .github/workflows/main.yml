@@ -17,6 +17,7 @@ jobs:
     defaults:
       run:
         shell: bash
+
     steps:
       - name: Check out plugin source
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
@@ -33,22 +34,43 @@ jobs:
       - name: Check PHP syntax
         run: find src -name '*.php' -print0 | xargs -0 -r -n1 php -l
 
-      - name: Build with DevTools
-        id: build
-        uses: AxolotlBucketLabs/DevTools@04fd726101109739bf1fd629dbe8499d3e2864bb # v3.0.0
-        with:
-          project: .
-          virions: .devtools-virions
-          output: build
-          prepare-dependencies: ${{ hashFiles('composer.lock') != '' }}
+      - name: Validate plugin manifest
+        run: |
+          if [[ ! -f plugin.toml ]]; then
+            echo "::error::plugin.toml is missing from the project root."
+            exit 1
+          fi
 
-      - name: Stage the plugin file
-        env:
-          SOURCE_PHAR: ${{ steps.build.outputs.phar }}
-          OUTPUT_PHAR: 'dist/{{package_name}}.phar'
+      - name: Install Composer dependencies
+        if: hashFiles('composer.json') != ''
+        run: composer install --no-interaction --prefer-dist --no-progress
+
+      - name: Download Pharynx
+        run: |
+          curl -fL \
+            https://github.com/BedrockNexus/pharynx/releases/latest/download/pharynx.phar \
+            -o "$RUNNER_TEMP/pharynx.phar"
+
+      - name: Build plugin with Pharynx
         run: |
           mkdir -p dist
-          cp -- "$SOURCE_PHAR" "$OUTPUT_PHAR"
+
+          BUILD_ARGS=(
+            -s "src"
+            -p "dist/{{package_name}}.phar"
+          )
+
+          if [[ -d resources ]]; then
+            BUILD_ARGS+=(-f "resources:resources")
+          fi
+
+          if [[ -f composer.json ]]; then
+            BUILD_ARGS+=(-c)
+          fi
+
+          php "$RUNNER_TEMP/pharynx.phar" "${BUILD_ARGS[@]}"
+
+          test -s "dist/{{package_name}}.phar"
 
       - name: Upload plugin for build selection
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
