@@ -57,7 +57,6 @@ jobs:
 
           BUILD_ARGS=(
             -s "src"
-            -p "dist/{{package_name}}.phar"
           )
 
           if [[ -d resources ]]; then
@@ -70,7 +69,8 @@ jobs:
 
           php "$RUNNER_TEMP/pharynx.phar" "${BUILD_ARGS[@]}"
 
-          test -s "dist/{{package_name}}.phar"
+          test -s output.phar
+          mv output.phar "dist/{{package_name}}.phar"
 
       - name: Upload plugin for build selection
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
